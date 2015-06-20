@@ -5,7 +5,7 @@
 
   function Speaker(name, color, handle, shortHandle, client) {
     this.name = name;
-    this.shortName = name.toUpperCase();
+    this.dialogName = name.toUpperCase();
     this.handle = handle;
     this.shortHandle = shortHandle;
     this.handleColor = color;
@@ -14,9 +14,9 @@
   }
 
   $.extend(Speaker.prototype, {
-    withShortName:
-      function withShortName(shortName) {
-        this.shortName = shortName;
+    withDialogName:
+      function withDialogName(dialogName) {
+        this.dialogName = dialogName;
         return this;
       },
 
@@ -47,7 +47,7 @@
     Feferi: new Speaker('Feferi', '77003c', 'cuttlefishCuller', 'CC', CLIENT_TROLLIAN),
 
     GO_Vriska: new Speaker('Vriska (Game Over)', '005682', 'arachnidsGrip', 'AG', CLIENT_TROLLIAN)
-      .withShortName('(VRISKA)'),
+      .withDialogName('(VRISKA)'),
 
     Jasprosesprite: new Speaker('Jasprosesprite^2', 'f141ef').withTextColor('b536da')
   };
