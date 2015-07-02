@@ -3,6 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <link rel="stylesheet" type="text/css" href="css/editor.css">
+    <link rel="stylesheet" type="text/css" href="css/skin_mspa.css">
     <title>Pesterlog Writer</title>
   </head>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
@@ -10,12 +11,21 @@
   <script src="js/speaker.js"></script>
   <script src="js/dialog.js"></script>
   <script src="js/editor.js"></script>
-  <body>
-    <div class="content">
-      <div class="editor-container">
+  <body class="skin-mspa">
+    <div class="content-frame">
+      <div class="content">
+        <menu type="toolbar" class="toolbar">
+          <li id="btnNew"><button type="button" class="toolbar-button"><span class="toolbar-button-text">New</span></button></li>
+          <li id="btnOpen"><button type="button" class="toolbar-button"><span class="toolbar-button-text">Open</span></button></li>
+          <li id="btnSave"><button type="button" class="toolbar-button"><span class="toolbar-button-text">Save</span></button></li>
+        </menu>
         <div class="editor">
         </div>
       </div>
+    </div>
+    <div class="hidden-container">
+      <input type="file" id="fileOpener" />
+      <a href="#" id="fileSaver" target="_blank" download="pesterlog.txt"></a>
     </div>
   </body>
 </html>

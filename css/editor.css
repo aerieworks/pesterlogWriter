@@ -9,26 +9,56 @@ body {
   background-color: #5a5a5a;
 }
 
-.content {
+.hidden-container {
+  display: none;
+}
+
+.content-frame {
   width: 650px;
   padding: 0 150px;
   margin: 0 auto;
-  background-color: #c6c6c6;
 }
 
-.editor-container {
+.content {
   position: relative;
   width: 600px;
   padding: 50px 25px;
-  background-color: #eeeeee;
+}
+
+.toolbar {
+  clear: both;
+  overflow: hidden;
+  margin: 5px 0;
+  padding: 0;
+  list-style-type: none;
+}
+
+.toolbar > li {
+  float: left;
+  padding: 4px;
+  list-style-type: none;
+  cursor: pointer;
+}
+
+.toolbar-button {
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: 0px solid transparent;
+  font: inherit;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.toolbar-button-text {
+  display: inline-block;
 }
 
 .editor {
   min-height: 500px;
   width: 536px;
   padding: 31px;
-  border: 1px dashed gray;
-  font-family: courier;
+  font-family: courier, monospace;
   font-size: 14px;
   font-weight: bold;
 }

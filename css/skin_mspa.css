@@ -1,0 +1,33 @@
+.skin-mspa .content-frame {
+  background-color: #c6c6c6;
+}
+
+.skin-mspa .content {
+  background-color: #eeeeee;
+}
+
+.skin-mspa .toolbar {
+  font-family: courier, monospace;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.skin-mspa .toolbar-button:active {
+  color: #c6c6c6;
+}
+
+.skin-mspa .toolbar-button:before {
+  content: '[';
+}
+
+.skin-mspa .toolbar-button:after {
+  content: ']';
+}
+
+.skin-mspa .toolbar-button-text:hover {
+  text-decoration: underline;
+}
+
+.skin-mspa .editor {
+  border: 1px dashed gray;
+}

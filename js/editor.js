@@ -2,30 +2,59 @@
 (function (PW, $) {
   var editor;
   var dialog;
+  var fileOpener;
+  var fileSaver;
   var speakerSelector;
-  var currentSpeaker;
-  var lastSpeaker = null;
+  var justSelectedSpeaker = false;
   var activeLine = null;
+  var previousCursor = null;
 
   function editor_keydown(ev) {
     console.log('KeyDown: [' + ev.charCode + '] [' + ev.which + '] [' + (ev.altKey ? 'A' : ' ') + (ev.ctrlKey ? 'C' : ' ') + (ev.metaKey ? 'M' : ' ') + (ev.shiftKey ? 'S' : ' ') + ']');
+
+    var lineEditorDom = $(ev.target);
+    var dialogLineDom = lineEditorDom.closest('.dialog-line');
+    var dialogLine = dialogLineDom.data().line;
     if ((ev.metaKey || ev.ctrlKey) && !ev.shiftKey && (ev.which == 66 || ev.which == 73)) {
       // Block bold/italics command hotkeys.
       console.log('Blocking Meta+' + ev.which);
       ev.preventDefault();
     } else if (ev.which == 13) {
       // Enter key adds new dialog line.
-      startNewLine(false);
+      var speaker;
+      var shouldSelectSpeaker = false;
+      if (ev.shiftKey) {
+        speaker = dialogLine.speaker;
+      } else {
+        speaker = dialog.getPreviousSpeaker(dialogLine) || dialogLine.speaker;
+      }
+
+      var nextLineText = '';
+      var currentLineText = lineEditorDom.text();
+      var cursor = getCursorPosition();
+      lineEditorDom.text(currentLineText.substring(0, cursor.start));
+      nextLineText = currentLineText.substring(cursor.end, currentLineText.length);
+      startNewLine(speaker, nextLineText);
       ev.preventDefault();
     } else if (ev.which == 37) {
-      // Left arrow at beginning should set focus on speaker selector.
-      var position = findCursorPosition();
-      console.log(position);
-      if (position.start == 0) {
-        console.log('Blocking left move.');
-        showSpeakerSelector($(ev.target).closest('.dialog-line'));
+      var cursor = getCursorPosition();
+      if (cursor && cursor.start == 0) {
+        moveToPreviousLine(dialogLineDom);
         ev.preventDefault();
       }
+    } else if (ev.which == 38) {
+      moveToPreviousLine(dialogLineDom, getCursorPosition().start);
+      ev.preventDefault();
+    } else if (ev.which == 39) {
+      var cursor = getCursorPosition();
+      var text = dialogLineDom.children('.dialog-line-editor').text();
+      if (cursor && cursor.start >= text.length) {
+        moveToNextLine(dialogLineDom, { start: 0, end: 0, line: dialogLineDom });
+        ev.preventDefault();
+      }
+    } else if (ev.which == 40) {
+      moveToNextLine(dialogLineDom, getCursorPosition());
+      ev.preventDefault();
     }
   }
 
@@ -35,21 +64,35 @@
   }
 
   function speakerLabel_mouseenter(ev) {
-    showSpeakerSelector($(ev.target).closest('.dialog-line'));
+    var dialogLineDom = $(ev.target).closest('.dialog-line');
+    console.log('mouseenter: ' + dialogLineDom.data().line.speaker.name);
+    if (justSelectedSpeaker) {
+      console.log('\tIgnoring, just selected speaker.');
+    } else {
+      var currentCursor = getCursorPosition();
+      if (currentCursor) {
+        previousCursor = currentCursor;
+      }
+      showSpeakerSelector(dialogLineDom);
+    }
   }
 
   function speakerSelector_mouseleave(ev) {
-    console.log('Hiding speaker selector after leaving it');
+    console.log('mouseleave: speakerSelector');
+    console.log('\tHiding speaker selector after leaving it');
     speakerSelector.addClass('inactive');
   }
 
   function speakerLabel_mouseleave(ev) {
+    var dialogLineDom = $(ev.target).closest('.dialog-line');
+    console.log('mouseleave: ' + dialogLineDom.data().line.speaker.name);
     if ($(ev.relatedTarget).hasClass('speaker-selector')) {
-      console.log('Ignoring leave due to speaker-selector');
+      console.log('\tIgnoring leave due to speaker-selector');
       return;
     }
-    console.log('Hiding speaker selector');
+    console.log('\tHiding speaker selector');
     speakerSelector.addClass('inactive');
+    justSelectedSpeaker = false;
   }
 
   function speakerLabel_click(ev) {
@@ -65,10 +108,91 @@
 
     var dialogLine = activeLine.data().line;
     dialogLine.speaker = PW.Speakers[speakerSelector.val()];
+
+    var wasLineSelected = (previousCursor && activeLine[0] == previousCursor.line[0]);
+    activeLine.get(0).blur();
     var updatedLine = renderDialogLine(dialogLine, activeLine);
     speakerSelector.addClass('inactive');
-    updatedLine[0].focus();
+    justSelectedSpeaker = true;
+    setCursorPosition(updatedLine, wasLineSelected ? previousCursor : null);
     activeLine = null;
+  }
+
+  function btnNew_click(ev) {
+    createNewDialog();
+  }
+
+  function btnOpen_click(ev) {
+    fileOpener.click();
+  }
+
+  function fileOpener_change(ev) {
+    var file = fileOpener.get(0).files[0];
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      console.log('Loaded: ' + ev.target.result);
+      var o;
+      try {
+        o = JSON.parse(ev.target.result);
+      } catch (ex) {
+        console.log(ex);
+        alert('An error occurred opening the file "' + file.name + '"; it does not appear to be a valid pesterlogWriter file.');
+      }
+
+      var dialog = PW.Dialog.fromJson(o);
+      console.log('Deserialized: ' + JSON.stringify(dialog.toJson));
+      renderDialog(dialog);
+    };
+    reader.readAsText(file);
+  }
+
+  function btnSave_click(ev) {
+    var dialogUrl = 'data:text/plain;base64,' + btoa(JSON.stringify(dialog.toJson()));
+    fileSaver.attr('href', dialogUrl);
+    fileSaver.get(0).click();
+  }
+
+  function setCursorPosition(dialogLine, cursor) {
+    setTimeout(function () {
+      console.log('Setting cursor');
+      var lineEditor = dialogLine.children('.dialog-line-editor')[0];
+      var textNode = lineEditor.childNodes[0];
+
+      if (cursor == null) {
+        cursor = {
+          start: textNode.length,
+          end: textNode.length,
+          line: dialogLine
+        };
+      }
+
+      var range = document.createRange();
+      range.selectNodeContents(lineEditor);
+      range.setStart(textNode, Math.min(textNode.length, cursor.start));
+      range.setEnd(textNode, Math.min(textNode.length, cursor.end));
+
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      previousCursor = null;
+    }, 0);
+  }
+
+  function moveToNextLine(currentLineDom, cursor) {
+    var nextLineDom = currentLineDom.next('.dialog-line');
+    if (nextLineDom.length > 0) {
+      setCursorPosition(nextLineDom, cursor);
+    }
+  }
+
+  function moveToPreviousLine(currentLineDom, position) {
+    var previousLineDom = currentLineDom.prev('.dialog-line');
+    if (previousLineDom.length > 0) {
+      if (position == null) {
+        position = previousLineDom.children('.dialog-line-editor').text().length;
+      }
+      setCursorPosition(previousLineDom, { start: position, end: position, previousLineDom });
+    }
   }
 
   function resolveRelativeOffset(target, commonParent) {
@@ -82,7 +206,8 @@
   }
 
   function showSpeakerSelector(dialogLine) {
-    console.log('Showing speaker selector');
+    justSelectedSpeaker = false;
+    console.log('\tShowing speaker selector');
     activeLine = dialogLine;
     var speaker = dialogLine.data().line.speaker;
     var speakerLabel = dialogLine.children('.speaker-label')[0]
@@ -95,25 +220,18 @@
     speakerSelector[0].focus();
   }
 
-  function focusOnLine(line) {
-    var range = document.createRange();
-    range.setStart(line.children('.dialog-line-contents')[0], 0);
-    range.collapse(true);
-    var selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-
-  function findCursorPosition() {
-    var selection = window.getSelection();
-    if (selection.rangeCount) {
+  function getCursorPosition() {
+    var selection = document.getSelection();
+    if (selection.rangeCount == 1) {
       var range = selection.getRangeAt(0);
       return {
         start: range.startOffset,
         end: range.endOffset,
-        container: range.startContainer
+        line: $(range.commonAncestorContainer).closest('.dialog-line')
       };
     }
+
+    return null;
   }
 
   function createSpeakerSelector() {
@@ -125,12 +243,29 @@
     return selector;
   }
 
+  function createNewDialog() {
+    dialog = new PW.Dialog(PW.Dialog.Types.Pesterlog);
+    renderDialog(dialog);
+  }
+
+  function renderDialog(dialog) {
+    editor.empty();
+    var lastLineDom = null;
+    for (var i = 0; i < dialog.lines.length; i++) {
+      lastLineDom = renderDialogLine(dialog.lines[i]);
+    }
+
+    if (lastLineDom == null) {
+      startNewLine(PW.Speakers.John, '');
+    }
+  }
+
   function renderDialogLine(line, replace) {
     var speakerLabel = $('<div class="speaker-label"></div>')
       .text(line.getSpeakerName() + ': ')
       .css({ color: '#' + line.speaker.handleColor });
     var lineEditor = $('<p class="dialog-line-editor" contentEditable="true"></p>')
-      .text(line.content);
+      .append(document.createTextNode(line.content));
     var lineDom = $('<div class="dialog-line" />')
       .data({ line: line })
       .css({ color: '#' + line.speaker.textColor })
@@ -145,13 +280,12 @@
     return lineDom;
   }
 
-  function startNewLine(keepSpeaker) {
-    if (!keepSpeaker && lastSpeaker != null) {
-      currentSpeaker = lastSpeaker;
-    }
-
-    var lineDom = renderDialogLine(dialog.addLine(currentSpeaker));
-    lineDom.children('.dialog-line-editor')[0].focus();
+  function startNewLine(speaker, lineContent) {
+    var dialogLine = dialog.addLine(speaker, lineContent);
+    var lineDom = renderDialogLine(dialogLine);
+    var cursor = { start: 0, end: 0, line: lineDom };
+    setCursorPosition(lineDom, cursor);
+    return lineDom;
   }
 
   $(function () {
@@ -167,8 +301,15 @@
     speakerSelector.on('mouseleave', speakerSelector_mouseleave);
     speakerSelector.on('change', speakerSelector_change);
 
-    currentSpeaker = PW.Speakers.John;
-    dialog = new PW.Dialog(PW.Dialog.Types.Pesterlog);
-    startNewLine();
+    $('#btnNew').on('click', btnNew_click);
+
+    fileOpener = $('#fileOpener');
+    fileOpener.on('change', fileOpener_change);
+    $('#btnOpen').on('click', btnOpen_click);
+
+    fileSaver = $('#fileSaver');
+    $('#btnSave').on('click', btnSave_click);
+
+    createNewDialog();
   });
 })(window.PesterWriter, jQuery);
