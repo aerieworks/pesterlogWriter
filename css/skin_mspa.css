@@ -2,8 +2,13 @@
   background-color: #c6c6c6;
 }
 
+.skin-mspa .header {
+  background-color: #eeeeee;
+}
+
 .skin-mspa .content {
   background-color: #eeeeee;
+  border-color: #5a5a5a;
 }
 
 .skin-mspa .toolbar {

@@ -8,6 +8,9 @@
   var justSelectedSpeaker = false;
   var activeLine = null;
   var previousCursor = null;
+  var loadingTimer = null;
+  var loadingMask = null;
+  var loadingIndicator = null;
 
   function editor_keydown(ev) {
     console.log('KeyDown: [' + ev.charCode + '] [' + ev.which + '] [' + (ev.altKey ? 'A' : ' ') + (ev.ctrlKey ? 'C' : ' ') + (ev.metaKey ? 'M' : ' ') + (ev.shiftKey ? 'S' : ' ') + ']');
@@ -130,19 +133,25 @@
     var file = fileOpener.get(0).files[0];
     var reader = new FileReader();
     reader.onload = function (ev) {
-      console.log('Loaded: ' + ev.target.result);
-      var o;
       try {
-        o = JSON.parse(ev.target.result);
-      } catch (ex) {
-        console.log(ex);
-        alert('An error occurred opening the file "' + file.name + '"; it does not appear to be a valid pesterlogWriter file.');
-      }
+        console.log('Loaded: ' + ev.target.result);
+        var o;
+        try {
+          o = JSON.parse(ev.target.result);
+        } catch (ex) {
+          console.log(ex);
+          alert('An error occurred opening the file "' + file.name + '"; it does not appear to be a valid pesterlogWriter file.');
+          return;
+        }
 
-      var dialog = PW.Dialog.fromJson(o);
-      console.log('Deserialized: ' + JSON.stringify(dialog.toJson));
-      renderDialog(dialog);
+        var dialog = PW.Dialog.fromJson(o);
+        console.log('Deserialized: ' + JSON.stringify(dialog.toJson));
+        renderDialog(dialog);
+      } finally {
+        stopLoading();
+      }
     };
+    startLoading();
     reader.readAsText(file);
   }
 
@@ -150,6 +159,34 @@
     var dialogUrl = 'data:text/plain;base64,' + btoa(JSON.stringify(dialog.toJson()));
     fileSaver.attr('href', dialogUrl);
     fileSaver.get(0).click();
+  }
+
+  function startLoading() {
+    if (!loadingTimer) {
+      console.log('Starting loading');
+      loadingMask.addClass('is-loading');
+      loadingTimer = setInterval(function () {
+        var text = loadingIndicator.text();
+        if (text.length == 3) {
+          text = '.';
+        } else {
+          text = text + '.';
+        }
+        loadingIndicator.text(text);
+      }, 500);
+    } else {
+      console.log('loadingTimer is true?');
+    }
+  }
+
+  function stopLoading() {
+    if (loadingTimer) {
+      console.log('Stopping loading');
+      clearTimeout(loadingTimer);
+      loadingMask.removeClass('is-loading');
+    } else {
+      console.log('loadingTimer is false?');
+    }
   }
 
   function setCursorPosition(dialogLine, cursor) {
@@ -289,6 +326,9 @@
   }
 
   $(function () {
+    loadingMask = $('.loading-mask');
+    loadingIndicator = loadingMask.children('.loading-indicator');
+
     editor = $('.editor');
     editor.on('keydown', editor_keydown);
     editor.on('blur', '.dialog-line-editor', dialogLineEditor_blur);
