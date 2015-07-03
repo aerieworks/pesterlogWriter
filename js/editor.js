@@ -58,6 +58,20 @@
     } else if (ev.which == 40) {
       moveToNextLine(dialogLineDom, getCursorPosition());
       ev.preventDefault();
+    } else if (!ev.metaKey && !ev.altKey && !ev.ctrlKey && ev.which >= 65 && ev.which <= 90) {
+      var cursor = getCursorPosition();
+      var editor = dialogLineDom.children('.dialog-line-editor');
+      var text = editor.text();
+      var input = String.fromCharCode(ev.which + (ev.shiftKey ? 0 : 32));
+      var quirkedInput = dialogLine.speaker.quirkFilter(input, cursor, text);
+      if (quirkedInput != input) {
+        console.log('QUIRKED! "' + input + '" => "' + quirkedInput + '"');
+        editor.text(text.substring(0, cursor.start) + quirkedInput + text.substring(cursor.end, text.length));
+        ev.preventDefault();
+
+        var newCursorStart = cursor.start + quirkedInput.length;
+        setCursorPosition(dialogLineDom, { start: newCursorStart, end: newCursorStart, line: dialogLineDom });
+      }
     }
   }
 
@@ -156,7 +170,9 @@
   }
 
   function btnSave_click(ev) {
-    var dialogUrl = 'data:text/plain;base64,' + btoa(JSON.stringify(dialog.toJson()));
+    var json = JSON.stringify(dialog.toJson());
+    console.log('Saving: ' + json);
+    var dialogUrl = 'data:text/plain,' + json;
     fileSaver.attr('href', dialogUrl);
     fileSaver.get(0).click();
   }
