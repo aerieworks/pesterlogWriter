@@ -63,9 +63,8 @@
       var editor = dialogLineDom.children('.dialog-line-editor');
       var text = editor.text();
       var input = String.fromCharCode(ev.which + (ev.shiftKey ? 0 : 32));
-      var quirkedInput = dialogLine.speaker.quirkFilter(input, cursor, text);
+      var quirkedInput = dialogLine.speaker.quirkLetterFilter(input, cursor, text);
       if (quirkedInput != input) {
-        console.log('QUIRKED! "' + input + '" => "' + quirkedInput + '"');
         editor.text(text.substring(0, cursor.start) + quirkedInput + text.substring(cursor.end, text.length));
         ev.preventDefault();
 
@@ -159,7 +158,7 @@
         }
 
         var dialog = PW.Dialog.fromJson(o);
-        console.log('Deserialized: ' + JSON.stringify(dialog.toJson));
+        console.log('Deserialized: ' + JSON.stringify(dialog.toJson()));
         renderDialog(dialog);
       } finally {
         stopLoading();

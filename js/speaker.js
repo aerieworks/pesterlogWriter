@@ -6,15 +6,18 @@
   var vriskaQuirks = [
     { re: /(\w)at(?:e|(ed|ing|ion|ions|ioned|ioning))$/, replacement: '$18$2' },
     { re: /(\w)ates$/, replacement: '$18s' },
-    { re: /(\w)ait(s|ed|ing)$/, replacement: '$18$2' },
-    { re: /[bB]/, replacement: '8' }
+    { re: /(\w)ait(s|ed|ing)$/, replacement: '$18$2' }
   ];
 
-  function noopQuirkFilter(input, cursor, text) {
+  function noopLetterFilter(input, cursor, text) {
     return input;
   }
 
-  function Speaker(name, color, handle, shortHandle, client, quirkFilter) {
+  function noopWordFilter(input) {
+    return input;
+  }
+
+  function Speaker(name, color, handle, shortHandle, client, quirkLetterFilter, quirkWordFilter) {
     this.name = name;
     this.dialogName = name.toUpperCase();
     this.handle = handle;
@@ -22,7 +25,8 @@
     this.handleColor = color;
     this.textColor = color;
     this.client = client;
-    this.quirkFilter = quirkFilter || noopQuirkFilter;
+    this.quirkLetterFilter = quirkLetterFilter || noopLetterFilter;
+    this.quirkWordFilter = quirkWordFilter || noopWordFilter;
   }
 
   $.extend(Speaker.prototype, {
@@ -92,15 +96,19 @@
           return input.toUpperCase();
         }),
     Vriska: new Speaker('Vriska', '005682', 'arachnidsGrip', 'AG', CLIENT_TROLLIAN,
-        function (input, cursor, text) {
-          var newText = text.substring(0, cursor.start) + input + text.substring(cursor.end, text.length);
-          for (var i = 0; i < vriskaQuirks.length; i++) {
-            var quirk = vriskaQuirks[i];
-            if (quirk.re.test(newText)) {
-              //return newText.replace(quirk.re, quirk.replacement);
-            }
+        function (input) {
+          if (input == 'b' || input == 'B') {
+            return '8';
           }
           return input;
+        },
+        function (input) {
+          for (var i = 0; i < vriskaQuirks.length; i++) {
+            var quirk = vriskaQuirks[i];
+            if (quirk.re.test(input)) {
+              return input.replace(quirk.re, quirk.replacement);
+            }
+          }
         }),
     Equius: new Speaker('Equius', '000056', 'centaursTesticle', 'CT', CLIENT_TROLLIAN),
     Gamzee: new Speaker('Gamzee', '2b0057', 'terminallyCapricious', 'TC', CLIENT_TROLLIAN,
